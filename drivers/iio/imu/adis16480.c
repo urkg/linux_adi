@@ -886,6 +886,12 @@ enum adis16480_variant {
 	ADIS16497_1,
 	ADIS16497_2,
 	ADIS16497_3,
+	ADIS16545_1,
+	ADIS16545_2,
+	ADIS16545_3,
+	ADIS16547_1,
+	ADIS16547_2,
+	ADIS16547_3
 };
 
 #define ADIS16480_DIAG_STAT_XGYRO_FAIL 0
@@ -965,6 +971,12 @@ static const struct adis_timeout adis16495_1_timeouts = {
 	.reset_ms = 250,
 	.sw_reset_ms = 210,
 	.self_test_ms = 20,
+};
+
+static const struct adis_timeout adis16545_timeouts = {
+	.reset_ms = 315,
+	.sw_reset_ms = 270,
+	.self_test_ms = 35,
 };
 
 static const struct adis16480_chip_info adis16480_chip_info[] = {
@@ -1142,6 +1154,109 @@ static const struct adis16480_chip_info adis16480_chip_info[] = {
 					    ADIS16495_BURST_MAX_DATA * 2,
 					    6000000),
 	},
+	[ADIS16545_1] = {
+		.channels = adis16495_channels,
+		.num_channels = ARRAY_SIZE(adis16495_channels),
+		.gyro_max_val = 20000 << 16,
+		.gyro_max_scale = IIO_DEGREE_TO_RAD(125),
+		.accel_max_val = IIO_M_S_2_TO_G(32000 << 16),
+		.accel_max_scale = 8,
+		.temp_scale = 7000, /* 7 milli degree Celsius */
+		.int_clk = 4250000,
+		.max_dec_rate = 4250,
+		.filter_freqs = adis16495_def_filter_freqs,
+		.has_pps_clk_mode = true,
+		/* 20 elements of 16bits */
+		.adis_data = ADIS16480_DATA(16545, &adis16545_timeouts,
+					    ADIS16495_BURST_MAX_DATA * 2,
+					    3200000),
+	},
+	[ADIS16545_2] = {
+		.channels = adis16495_channels,
+		.num_channels = ARRAY_SIZE(adis16495_channels),
+		.gyro_max_val = 18000 << 16,
+		.gyro_max_scale = IIO_DEGREE_TO_RAD(450),
+		.accel_max_val = IIO_M_S_2_TO_G(32000 << 16),
+		.accel_max_scale = 8,
+		.temp_scale = 7000, /* 7 milli degree Celsius */
+		.int_clk = 4250000,
+		.max_dec_rate = 4250,
+		.filter_freqs = adis16495_def_filter_freqs,
+		.has_pps_clk_mode = true,
+		/* 20 elements of 16bits */
+		.adis_data = ADIS16480_DATA(16545, &adis16545_timeouts,
+					    ADIS16495_BURST_MAX_DATA * 2,
+					    3200000),
+	},
+	[ADIS16545_3] = {
+		.channels = adis16495_channels,
+		.num_channels = ARRAY_SIZE(adis16495_channels),
+		.gyro_max_val = 20000 << 16,
+		.gyro_max_scale = IIO_DEGREE_TO_RAD(2000),
+		.accel_max_val = IIO_M_S_2_TO_G(32000 << 16),
+		.accel_max_scale = 8,
+		.temp_scale = 7000, /* 7 milli degree Celsius */
+		.int_clk = 4250000,
+		.max_dec_rate = 4250,
+		.filter_freqs = adis16495_def_filter_freqs,
+		.has_pps_clk_mode = true,
+		/* 20 elements of 16bits */
+		.adis_data = ADIS16480_DATA(16545, &adis16545_timeouts,
+					    ADIS16495_BURST_MAX_DATA * 2,
+					    3200000),
+	},
+	[ADIS16547_1] = {
+		.channels = adis16495_channels,
+		.num_channels = ARRAY_SIZE(adis16495_channels),
+		.gyro_max_val = 20000 << 16,
+		.gyro_max_scale = IIO_DEGREE_TO_RAD(125),
+		.accel_max_val = IIO_M_S_2_TO_G(32000 << 16),
+		.accel_max_scale = 40,
+		.temp_scale = 7000, /* 7 milli degree Celsius */
+		.int_clk = 4250000,
+		.max_dec_rate = 4250,
+		.filter_freqs = adis16495_def_filter_freqs,
+		.has_pps_clk_mode = true,
+		/* 20 elements of 16bits */
+		.adis_data = ADIS16480_DATA(16547, &adis16545_timeouts,
+					    ADIS16495_BURST_MAX_DATA * 2,
+					    3200000),
+	},
+	[ADIS16547_2] = {
+		.channels = adis16495_channels,
+		.num_channels = ARRAY_SIZE(adis16495_channels),
+		.gyro_max_val = 18000 << 16,
+		.gyro_max_scale = IIO_DEGREE_TO_RAD(450),
+		.accel_max_val = IIO_M_S_2_TO_G(32000 << 16),
+		.accel_max_scale = 40,
+		.temp_scale = 7000, /* 7 milli degree Celsius */
+		.int_clk = 4250000,
+		.max_dec_rate = 4250,
+		.filter_freqs = adis16495_def_filter_freqs,
+		.has_pps_clk_mode = true,
+		/* 20 elements of 16bits */
+		.adis_data = ADIS16480_DATA(16547, &adis16545_timeouts,
+					    ADIS16495_BURST_MAX_DATA * 2,
+					    3200000),
+	},
+	[ADIS16547_3] = {
+		.channels = adis16495_channels,
+		.num_channels = ARRAY_SIZE(adis16495_channels),
+		.gyro_max_val = 20000 << 16,
+		.gyro_max_scale = IIO_DEGREE_TO_RAD(2000),
+		.accel_max_val = IIO_M_S_2_TO_G(32000 << 16),
+		.accel_max_scale = 40,
+		.temp_scale = 7000, /* 7 milli degree Celsius */
+		.int_clk = 4250000,
+		.max_dec_rate = 4250,
+		.filter_freqs = adis16495_def_filter_freqs,
+		.has_pps_clk_mode = true,
+		/* 20 elements of 16bits */
+		.adis_data = ADIS16480_DATA(16547, &adis16545_timeouts,
+					    ADIS16495_BURST_MAX_DATA * 2,
+					    3200000),
+	}
+
 };
 
 static bool adis16480_validate_crc(const u16 *buf, const u8 n_elem, const u32 crc)
@@ -1566,6 +1681,12 @@ static const struct spi_device_id adis16480_ids[] = {
 	{ "adis16497-1", ADIS16497_1 },
 	{ "adis16497-2", ADIS16497_2 },
 	{ "adis16497-3", ADIS16497_3 },
+	{ "adis16545-1", ADIS16545_1 },
+	{ "adis16545-2", ADIS16545_2 },
+	{ "adis16545-3", ADIS16545_3 },
+	{ "adis16547-1", ADIS16547_1 },
+	{ "adis16547-2", ADIS16547_2 },
+	{ "adis16547-3", ADIS16547_3 },
 	{ }
 };
 MODULE_DEVICE_TABLE(spi, adis16480_ids);
@@ -1582,6 +1703,12 @@ static const struct of_device_id adis16480_of_match[] = {
 	{ .compatible = "adi,adis16497-1" },
 	{ .compatible = "adi,adis16497-2" },
 	{ .compatible = "adi,adis16497-3" },
+	{ .compatible = "adi,adis16545-1" },
+	{ .compatible = "adi,adis16545-2" },
+	{ .compatible = "adi,adis16545-3" },
+	{ .compatible = "adi,adis16547-1" },
+	{ .compatible = "adi,adis16547-2" },
+	{ .compatible = "adi,adis16547-3" },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, adis16480_of_match);
