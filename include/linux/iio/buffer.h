@@ -55,4 +55,7 @@ bool iio_validate_scan_mask_onehot(struct iio_dev *indio_dev,
 int iio_device_attach_buffer(struct iio_dev *indio_dev,
 			     struct iio_buffer *buffer);
 
+void iio_buffer_set_dir(struct iio_buffer *buffer,
+			enum iio_buffer_direction dir);
+
 #endif /* _IIO_BUFFER_GENERIC_H_ */
