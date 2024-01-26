@@ -138,6 +138,8 @@ static struct iio_buffer *axi_adc_request_buffer(struct iio_backend *back,
 	}
 
 	indio_dev->modes |= INDIO_BUFFER_HARDWARE;
+	iio_buffer_set_dir(buffer, IIO_BUFFER_DIRECTION_IN);
+
 	ret = iio_device_attach_buffer(indio_dev, buffer);
 	if (ret)
 		return ERR_PTR(ret);
