@@ -5050,7 +5050,7 @@ int32_t adi_ad9081_jesd_rx_qr_vertical_eye_scan(adi_ad9081_device_t *device,
  */
 int32_t adi_ad9081_jesd_rx_qr_two_dim_eye_scan(adi_ad9081_device_t *device,
 					       uint8_t lane,
-					       uint16_t eye_scan_data[96]);
+					       uint16_t eye_scan_data[97]);
 
 /**
  * @ingroup appdx_serdes_jrx_tm
@@ -5087,7 +5087,7 @@ int32_t adi_ad9081_jesd_rx_hr_vertical_eye_scan(
 int32_t adi_ad9081_jesd_rx_hr_two_dim_eye_scan(
 	adi_ad9081_device_t *device, uint8_t lane,
 	adi_cms_jesd_prbs_pattern_e prbs_pattern, uint32_t prbs_delay_ms,
-	uint16_t eye_scan_data[192]);
+	uint16_t eye_scan_data[193]);
 
 /*===== A 1 . 2   J T X  S E R D E S  L I N K  T E S T  M O D E S   =====*/
 /**
