@@ -786,7 +786,7 @@ int iio_str_to_fixpoint(const char *str, int fract_mult, int *integer,
  * Returns the given value converted from rad to degree
  */
 #define IIO_RAD_TO_DEGREE(rad) \
-	(((rad) * 18000000ULL + 314159ULL / 2) / 314159ULL)
+	DIV_ROUND_CLOSEST_ULL((rad) * 18000000ULL, 314159ULL)
 
 /**
  * IIO_G_TO_M_S_2() - Convert g to meter / second**2

@@ -372,6 +372,8 @@
 		dmas = <&tx_dma 0>;
 		dma-names = "tx";
 		clocks = <&clkc 16>;
+
+		#io-backend-cells = <0>;
 	};
 };
 

@@ -22,7 +22,7 @@
  *
  * Copyright (C) 2023 Analog Devices Inc.
  */
-#define pr_fmt(fmt) "iio-backend: " fmt
+#define dev_fmt(fmt) "iio-backend: " fmt
 
 #include <linux/cleanup.h>
 #include <linux/device.h>
@@ -34,6 +34,7 @@
 #include <linux/slab.h>
 
 #include <linux/iio/backend.h>
+#include <linux/iio/iio.h>
 
 struct iio_backend {
 	struct list_head entry;
@@ -177,6 +178,16 @@ int iio_backend_data_format_set(struct iio_backend *back, unsigned int chan,
 }
 EXPORT_SYMBOL_NS_GPL(iio_backend_data_format_set, IIO_BACKEND);
 
+int iio_backend_data_source_set(struct iio_backend *back, unsigned int chan,
+				enum iio_backend_data_source data)
+{
+	if (data >= IIO_BACKEND_DATA_SOURCE_MAX)
+		return -EINVAL;
+
+	return iio_backend_op_call(back, data_source_set, chan, data);
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_data_source_set, IIO_BACKEND);
+
 static void iio_backend_free_buffer(void *arg)
 {
 	struct iio_backend_buffer_pair *pair = arg;
@@ -221,6 +232,72 @@ int devm_iio_backend_request_buffer(struct device *dev,
 	return devm_add_action_or_reset(dev, iio_backend_free_buffer, pair);
 }
 EXPORT_SYMBOL_NS_GPL(devm_iio_backend_request_buffer, IIO_BACKEND);
+
+int iio_backend_read_ext_info(struct iio_backend *back, uintptr_t private,
+			      const struct iio_chan_spec *chan, char *buf)
+{
+	return iio_backend_op_call(back, read_ext_info, private, chan, buf);
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_read_ext_info, IIO_BACKEND);
+
+int iio_backend_write_ext_info(struct iio_backend *back, uintptr_t private,
+			       const struct iio_chan_spec *chan,
+			       const char *buf, size_t len)
+{
+	return iio_backend_op_call(back, write_ext_info, private, chan, buf,
+				   len);
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_write_ext_info, IIO_BACKEND);
+
+struct iio_chan_spec_ext_info *
+devm_iio_backend_get_ext_info(struct device *dev, struct iio_backend *back,
+			      enum iio_chan_type chan_type,
+			      ssize_t (*read)(struct iio_dev *indio_dev,
+					      uintptr_t private,
+					      const struct iio_chan_spec *chan,
+					      char *buf),
+			      ssize_t (*write)(struct iio_dev *indio_dev,
+					       uintptr_t private,
+					       const struct iio_chan_spec *chan,
+					       const char *buf, size_t len))
+{
+	struct iio_chan_spec_ext_info *ext_info, *tmp_info;
+	const struct iio_chan_spec_ext_info *info;
+	unsigned int entries = 0;
+	int ret;
+
+	ret = iio_backend_op_call(back, get_ext_info, chan_type, &info,
+				  &entries);
+	if (ret) {
+		dev_err_probe(dev, ret, "Failed to get backend ext_info\n");
+		return ERR_PTR(ret);
+	}
+
+	if (!entries)
+		return NULL;
+
+	ext_info = devm_kmemdup(dev, info, entries * sizeof(*info), GFP_KERNEL);
+	if (!ext_info)
+		return ERR_PTR(-ENOMEM);
+
+	tmp_info = ext_info;
+	while (tmp_info->name) {
+		/* Make sure the backend did not sneaked in any callback. */
+		if (tmp_info->read || tmp_info->write) {
+			dev_err_probe(dev, -EINVAL,
+				      "Backend(%s) is assigning ext_info callbacks!\n",
+				      dev_name(back->dev));
+			return ERR_PTR(-EINVAL);
+		}
+
+		tmp_info->read = read;
+		tmp_info->write = write;
+		tmp_info++;
+	}
+
+	return ext_info;
+}
+EXPORT_SYMBOL_NS_GPL(devm_iio_backend_get_ext_info, IIO_BACKEND);
 
 static void iio_backend_release(void *arg)
 {

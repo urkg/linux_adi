@@ -2,8 +2,11 @@
 #ifndef _IIO_BACKEND_H_
 #define _IIO_BACKEND_H_
 
+#include <linux/iio/types.h>
 #include <linux/types.h>
 
+struct iio_chan_spec_ext_info;
+struct iio_chan_spec;
 struct fwnode_handle;
 struct iio_backend;
 struct device;
@@ -13,6 +16,12 @@ enum iio_backend_data_type {
 	IIO_BACKEND_TWOS_COMPLEMENT,
 	IIO_BACKEND_OFFSET_BINARY,
 	IIO_BACKEND_DATA_TYPE_MAX
+};
+
+enum iio_backend_data_source {
+	IIO_BACKEND_INTERNAL_CW,
+	IIO_BACKEND_EXTERNAL,
+	IIO_BACKEND_DATA_SOURCE_MAX
 };
 
 /**
@@ -45,10 +54,22 @@ struct iio_backend_ops {
 	int (*chan_disable)(struct iio_backend *back, unsigned int chan);
 	int (*data_format_set)(struct iio_backend *back, unsigned int chan,
 			       const struct iio_backend_data_fmt *data);
+	int (*data_source_set)(struct iio_backend *back, unsigned int chan,
+			       enum iio_backend_data_source data);
+
 	struct iio_buffer *(*request_buffer)(struct iio_backend *back,
 					     struct iio_dev *indio_dev);
 	void (*free_buffer)(struct iio_backend *back,
 			    struct iio_buffer *buffer);
+	ssize_t (*read_ext_info)(struct iio_backend *back, uintptr_t private,
+				 const struct iio_chan_spec *chan, char *buf);
+	ssize_t (*write_ext_info)(struct iio_backend *back, uintptr_t private,
+				  const struct iio_chan_spec *chan,
+				  const char *buf, size_t len);
+	int (*get_ext_info)(struct iio_backend *back,
+			    enum iio_chan_type chan_type,
+			    const struct iio_chan_spec_ext_info **ext_info,
+			    unsigned int *entries);
 };
 
 int iio_backend_chan_enable(struct iio_backend *back, unsigned int chan);
@@ -56,10 +77,27 @@ int iio_backend_chan_disable(struct iio_backend *back, unsigned int chan);
 int devm_iio_backend_enable(struct device *dev, struct iio_backend *back);
 int iio_backend_data_format_set(struct iio_backend *back, unsigned int chan,
 				const struct iio_backend_data_fmt *data);
+int iio_backend_data_source_set(struct iio_backend *back, unsigned int chan,
+				enum iio_backend_data_source data);
 int devm_iio_backend_request_buffer(struct device *dev,
 				    struct iio_backend *back,
 				    struct iio_dev *indio_dev);
-
+int iio_backend_read_ext_info(struct iio_backend *back, uintptr_t private,
+			      const struct iio_chan_spec *chan, char *buf);
+int iio_backend_write_ext_info(struct iio_backend *back, uintptr_t private,
+			       const struct iio_chan_spec *chan,
+			       const char *buf, size_t len);
+struct iio_chan_spec_ext_info *
+devm_iio_backend_get_ext_info(struct device *dev, struct iio_backend *back,
+			      enum iio_chan_type chan_type,
+			      ssize_t (*read)(struct iio_dev *indio_dev,
+					      uintptr_t private,
+					      const struct iio_chan_spec *chan,
+					      char *buf),
+			      ssize_t (*write)(struct iio_dev *indio_dev,
+					       uintptr_t private,
+					       const struct iio_chan_spec *chan,
+					       const char *buf, size_t len));
 void *iio_backend_get_priv(const struct iio_backend *conv);
 struct iio_backend *devm_iio_backend_get(struct device *dev, const char *name);
 struct iio_backend *
