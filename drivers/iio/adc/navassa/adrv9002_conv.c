@@ -471,6 +471,10 @@ int adrv9002_axi_intf_tune(struct adrv9002_rf_phy *phy, const bool tx, const int
 				return ret;
 
 			if (tx) {
+				ret = adrv9002_tx_fixup(phy, chann);
+				if (ret)
+					return ret;
+
 				/*
 				 * we need to restart the tx test for every iteration since it's
 				 * the only way to reset the counters.

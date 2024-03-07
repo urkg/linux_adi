@@ -4158,6 +4158,47 @@ static int adrv9002_parse_dt(struct adrv9002_rf_phy *phy)
 	return adrv9002_parse_fh_dt(phy, parent);
 }
 
+/*
+ * !\FIXME
+ *
+ * There's a very odd issue where the tx2 power is significantly higher than
+ * tx1. The reason is far from being clear but it looks somehow to be related with
+ * tuning and the SSI delays. Some workarounds tested were:
+ *	issuing a sync (reg 0x44) on the DDS;
+ *	re-enabling the DDS core.
+ * Both options had to be done after tuning but they were only half fixing the issue.
+ * Meaning that TX2 power decreased to a level closer to TX1 but still around 6dbs
+ * higher. Hence, what seems to really fix the issue is to read the TX SSI status
+ * on the device side and with testdata set to FIXED_PATTERN. Somehow that is making
+ * hdl happy. Another thing that was noted was that doing this at every calibration
+ * point (after configuring the delays), on TX2, lead to more reliable tuning results
+ * (more noticeable on the LTE40 profile).
+ *
+ * Obviuosly, this is an awful workaround and we need to understand the root cause of
+ * the issue and properly fix things. Hopefully this won't one those things where
+ * "we fix it later" means never!
+ */
+int adrv9002_tx_fixup(const struct adrv9002_rf_phy *phy, unsigned int chan)
+{
+	const struct adrv9002_chan *tx = &phy->tx_channels[chan].channel;
+	struct  adi_adrv9001_TxSsiTestModeCfg ssi_cfg = {
+		.testData = ADI_ADRV9001_SSI_TESTMODE_DATA_FIXED_PATTERN,
+	};
+	struct adi_adrv9001_TxSsiTestModeStatus dummy;
+	int ret;
+
+	if (phy->rx2tx2)
+		return 0;
+
+	ret = adi_adrv9001_Ssi_Tx_TestMode_Status_Inspect(phy->adrv9001, tx->number, phy->ssi_type,
+							  ADI_ADRV9001_SSI_FORMAT_16_BIT_I_Q_DATA,
+							  &ssi_cfg, &dummy);
+	if (ret)
+		return adrv9002_dev_err(phy);
+
+	return 0;
+}
+
 int adrv9002_init(struct adrv9002_rf_phy *phy, struct adi_adrv9001_Init *profile)
 {
 	int ret, c;
@@ -4207,6 +4248,12 @@ int adrv9002_init(struct adrv9002_rf_phy *phy, struct adi_adrv9001_Init *profile
 	if (ret) {
 		dev_err(&phy->spi->dev, "Interface tuning failed: %d\n", ret);
 		goto error;
+	}
+
+	for (c = 0; c < ARRAY_SIZE(phy->tx_channels); c++) {
+		ret = adrv9002_tx_fixup(phy, c);
+		if (ret)
+			return ret;
 	}
 
 	return 0;

@@ -252,6 +252,7 @@ int adrv9002_intf_change_delay(struct adrv9002_rf_phy *phy, const int channel, u
 			       u8 data_delay, const bool tx);
 u32 adrv9002_axi_dds_rate_get(struct adrv9002_rf_phy *phy, const int chan);
 void adrv9002_axi_hdl_loopback(struct adrv9002_rf_phy *phy, int channel, bool enable);
+int adrv9002_tx_fixup(const struct adrv9002_rf_phy *phy, unsigned int chan);
 
 static inline void adrv9002_sync_gpio_toggle(const struct adrv9002_rf_phy *phy)
 {
