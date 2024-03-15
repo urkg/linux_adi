@@ -17,7 +17,20 @@ The current branch is based on [xilinx_v6.1_LTS](https://github.com/Xilinx/linux
 
 ## How to build
 
-For build instructions [check the wiki](https://wiki.analog.com/resources/tools-software/linux-drivers-all#building_the_adi_linux_kernel).
+### Getting the ADI kernel
+First clone the ADI Linux repo, branch `gmsl/xilinx_v6.1_LTS` with the following command:
+
+`git clone --branch gmsl/xilinx_v6.1_LTS https://github.com/analogdevicesinc/linux`
+
+Second, configure the kernel build with `adi_gmsl_defconfig`
+
+`make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- adi_gmsl_defconfig`
+
+Last, build the kernel image, modules and devicetree blobs
+
+`make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules dtbs`
+
+For more detailed instructions please check the [ADI wiki](https://wiki.analog.com/resources/tools-software/linux-build/generic/zynqmp).
 
 ## Source code
 
