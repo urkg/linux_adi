@@ -1,0 +1,232 @@
+.. SPDX-License-Identifier: GPL-2.0-only
+
+=============
+AD7380 driver
+=============
+
+ADC driver for Analog Devices Inc. AD7380 and similar devices. The module name
+is ``ad7380``.
+
+
+Supported devices
+=================
+
+The following chips are supported by this driver:
+
+* `AD7380 <https://www.analog.com/en/products/ad7380.html>`_
+* `AD7381 <https://www.analog.com/en/products/ad7381.html>`_
+* `AD7383 <https://www.analog.com/en/products/ad7383.html>`_
+* `AD7384 <https://www.analog.com/en/products/ad7384.html>`_
+* `AD7380-4 <https://www.analog.com/en/products/ad7380-4.html>`_
+* `AD7381-4 <https://www.analog.com/en/products/ad7381-4.html>`_
+* `AD7383-4 <https://www.analog.com/en/products/ad7383-4.html>`_
+* `AD7384-4 <https://www.analog.com/en/products/ad7384-4.html>`_
+
++-------------------------+-------------------------+-------------------------+------------------------+
+| Name                    | Number of channels      | Type                    | Bit                    |
++=========================+=========================+=========================+========================+
+| AD7380                  | 2                       | Fully-differential      | 16                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+| AD7381                  | 2                       | Fully-differential      | 14                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+| AD7383                  | 2                       | Pseudo-differential     | 16                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+| AD7384                  | 2                       | Pseudo-differential     | 14                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+| AD7380-4                | 4                       | Fully-differential      | 16                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+| AD7381-4                | 4                       | Fully-differential      | 14                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+| AD7383-4                | 4                       | Pseudo-differential     | 16                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+| AD7384-4                | 4                       | Pseudo-differential     | 14                     |
++-------------------------+-------------------------+-------------------------+------------------------+
+
+
+Supported features
+==================
+
+SPI wiring modes
+----------------
+
+The driver currently supports only the 1-wire SPI-mode
+
+Reference voltage
+-----------------
+
+2 possible reference voltage sources are supported:
+
+- Internal reference (2.5V)
+- External reference (2.5V to 3 3.3V)
+
+The source is determined by the device tree. If ``refio-supply`` is present, then
+the external reference is used, else the internal reference is used.
+
+Unimplemented features
+----------------------
+
+- Oversampling
+- Resolution boost
+- CRC indication
+- Alert
+
+
+Device attributes
+=================
+
+Each IIO device, has a device folder under ``/sys/bus/iio/devices/iio:deviceX``,
+where ``X`` is the IIO index of the device. Under these folders reside a set of
+device attribute files, depending on the characteristics and features of the
+hardware device in question. These files are consistently generalized and
+documented in the IIO ABI documentation.
+
+There are two types of ADCs in this family, pseudo-differential and fully
+differential. The channel name is different depending on the type of ADC.
+
+Pseudo-differential ADCs
+------------------------
+
+AD7383, AD7384, AD7383-4 and AD7384-4 are pseudo-differential ADCs and have the following attributes:
+
++---------------------------------------+--------------------------------------------------------------+
+| Attribute                             | Description                                                  |
++=======================================+==============================================================+
+| ``in_voltage0_raw``                   | Raw ADC voltage value (*AINA+* referenced to ground sense).  |
++---------------------------------------+--------------------------------------------------------------+
+| ``in_voltage1_raw``                   | Raw ADC voltage value (*AINB+* referenced to ground sense).  |
++---------------------------------------+--------------------------------------------------------------+
+| ``in_voltage_scale``                  | Scale factor to convert raw value to mV.                     |
++---------------------------------------+--------------------------------------------------------------+
+
+In addition, AD7383-4 and AD7384-4 have the following attributes for their additionnal 2 channels:
+
++---------------------------------------+--------------------------------------------------------------+
+| Attribute                             | Description                                                  |
++=======================================+==============================================================+
+| ``in_voltage2_raw``                   | Raw ADC voltage value (*AINC+* referenced to ground sense).  |
++---------------------------------------+--------------------------------------------------------------+
+| ``in_voltage3_raw``                   | Raw ADC voltage value (*AIND+* referenced to ground sense).  |
++---------------------------------------+--------------------------------------------------------------+
+
+Fully-differential ADCs
+-----------------------
+
+AD7380, AD7381, AD7380-4 and AD7381-4 are fully-differential ADC and have the following attributes:
+
++---------------------------------------+--------------------------------------------------------------+
+| Attribute                             | Description                                                  |
++=======================================+==============================================================+
+| ``in_voltage0-voltage1_raw``          | Raw ADC voltage value (*AINA+* - *AINA-*).                   |
++---------------------------------------+--------------------------------------------------------------+
+| ``in_voltage2-voltage3_raw``          | Raw ADC voltage value (*AINB+* - *AINB-*).                   |
++---------------------------------------+--------------------------------------------------------------+
+| ``in_voltage-voltage_scale``          | Scale factor to convert raw value to mV.                     |
++---------------------------------------+--------------------------------------------------------------+
+
+In addition, AD7380-4 and AD7381-4 have the following attributes for their additionnal 2 channels:
+
++---------------------------------------+--------------------------------------------------------------+
+| Attribute                             | Description                                                  |
++=======================================+==============================================================+
+| ``in_voltage4-voltage5_raw``          | Raw ADC voltage value (*AINC+* - *AINC-*).                   |
++---------------------------------------+--------------------------------------------------------------+
+| ``in_voltage6-voltage7_raw``          | Raw ADC voltage value (*AIND+* - *AIND-*).                   |
++---------------------------------------+--------------------------------------------------------------+
+
+Processed values
+----------------
+
+A channel value can be read from its ``_raw`` attribute. The value returned is
+the raw value as reported by the devices. To get the processed value of the
+channel, apply the following formula:
+
+.. code-block::
+
+    processed value (mV) = _raw * _scale
+
+Where ``_raw`` and ``_scale`` are the values read from the corresponding device
+attributes and the result is in millivolts.
+
+For pseudo-differential chips, the processed value is the voltage of the *IN+*
+input referenced to ground. For fully-differential chips, the processed value
+is the voltage difference between the *IN+* and *IN-* inputs.
+
+Usage examples
+--------------
+
+Show device name:
+
+.. code-block:: console
+
+    root:/sys/bus/iio/devices/iio:device0# cat name
+    ad7383-4
+
+Show voltage input channel values:
+
+.. code-block:: console
+
+    root:/sys/bus/iio/devices/iio:device0# cat in_voltage0_raw
+    -22253
+    root:/sys/bus/iio/devices/iio:device0# cat in_voltage0_scale
+    0.050354003
+
+The actual measured voltage between *IN+* and *IN-* is:
+
+.. math:: -22253 \times 0.050354003 \approx -1120.53~\mathrm{mV}
+
+
+Device buffers
+==============
+
+This driver supports IIO triggered buffers.
+
+Usage examples
+--------------
+
+Create a trigger if one doesn't already exist:
+
+.. code-block:: console
+
+    root:/# mkdir /sys/kernel/config/iio/triggers/hrtimer/ad7380-trigger
+
+Set device trigger in current_trigger, if not already set:
+
+.. code-block:: console
+
+    root:/sys/bus/iio/devices/iio:device0# cat trigger/current_trigger
+
+    root:/sys/bus/iio/devices/iio:device0# echo ad7380-trigger > trigger/current_trigger
+    root:/sys/bus/iio/devices/iio:device0# cat trigger/current_trigger
+    ad7380-trigger
+
+Select channels for buffer read:
+
+.. code-block:: console
+
+    root:/sys/bus/iio/devices/iio:device0# echo 1 > buffer0/in_voltage0_en
+    root:/sys/bus/iio/devices/iio:device0# echo 1 > buffer0/in_timestamp_en
+
+Set the number of samples to be stored in the buffer:
+
+.. code-block:: console
+
+    root:/sys/bus/iio/devices/iio:device0# echo 4 > buffer0/length
+
+Enable the buffer:
+
+.. code-block:: console
+
+    root:/sys/bus/iio/devices/iio:device0# echo 1 > buffer0/enable
+
+Obtain buffered data:
+
+.. code-block:: console
+
+    root:/# hexdump -C -n 64 /dev/iio\:device0
+    00000000  2e a9 87 bb bb bd 6e be  d5 f5 6a f5 33 f5 fc f4  |......n...j.3...|
+    00000010  ba f4 0f f4 c8 f3 bc f3  4c ec 8e eb d2 ea e5 e9  |........L.......|
+    00000020  13 e9 f1 e7 08 e7 0f e6  b5 dc 97 db 23 da 46 d9  |............#.F.|
+    00000030  75 d7 8b d6 c4 d5 a1 d4  fa cb cb ca 7b c9 4f c8  |u...........{.O.|
+    00000040
+
+See :doc:`iio_devbuf` for more information about how buffered data is structured.
