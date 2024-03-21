@@ -22,7 +22,7 @@
  *
  * Copyright (C) 2023 Analog Devices Inc.
  */
-#define pr_fmt(fmt) "iio-backend: " fmt
+#define dev_fmt(fmt) "iio-backend: " fmt
 
 #include <linux/cleanup.h>
 #include <linux/device.h>
@@ -34,6 +34,7 @@
 #include <linux/slab.h>
 
 #include <linux/iio/backend.h>
+#include <linux/iio/iio.h>
 
 struct iio_backend {
 	struct list_head entry;
@@ -177,6 +178,23 @@ int iio_backend_data_format_set(struct iio_backend *back, unsigned int chan,
 }
 EXPORT_SYMBOL_NS_GPL(iio_backend_data_format_set, IIO_BACKEND);
 
+int iio_backend_data_source_set(struct iio_backend *back, unsigned int chan,
+				enum iio_backend_data_source data)
+{
+	if (data >= IIO_BACKEND_DATA_SOURCE_MAX)
+		return -EINVAL;
+
+	return iio_backend_op_call(back, data_source_set, chan, data);
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_data_source_set, IIO_BACKEND);
+
+int iio_backend_set_sampling_freq(struct iio_backend *back, unsigned int chan,
+				  u64 sample_rate)
+{
+	return iio_backend_op_call(back, set_sample_rate, chan, sample_rate);
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_set_sampling_freq, IIO_BACKEND);
+
 static void iio_backend_free_buffer(void *arg)
 {
 	struct iio_backend_buffer_pair *pair = arg;
@@ -221,6 +239,68 @@ int devm_iio_backend_request_buffer(struct device *dev,
 	return devm_add_action_or_reset(dev, iio_backend_free_buffer, pair);
 }
 EXPORT_SYMBOL_NS_GPL(devm_iio_backend_request_buffer, IIO_BACKEND);
+
+ssize_t iio_backend_ext_info_get(struct iio_dev *indio_dev, uintptr_t private,
+				 const struct iio_chan_spec *chan, char *buf)
+{
+	struct iio_backend *back = iio_device_get_drvdata(indio_dev);
+
+	return iio_backend_op_call(back, ext_info_get, private, chan, buf);
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_ext_info_get, IIO_BACKEND);
+
+ssize_t iio_backend_ext_info_set(struct iio_dev *indio_dev, uintptr_t private,
+				 const struct iio_chan_spec *chan,
+				 const char *buf, size_t len)
+{
+	struct iio_backend *back = iio_device_get_drvdata(indio_dev);
+
+	return iio_backend_op_call(back, ext_info_set, private, chan, buf, len);
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_ext_info_set, IIO_BACKEND);
+
+int iio_backend_extend_chan_spec(struct iio_dev *indio_dev,
+				 struct iio_backend *back,
+				 struct iio_chan_spec *chan)
+{
+	const struct iio_chan_spec_ext_info *ext_info = chan->ext_info;
+	int ret;
+
+	ret = iio_backend_op_call(back, extend_chan_spec, chan);
+	if (ret)
+		return ret;
+	/*
+	 * Let's keep things simple for now. Don't allow to overwrite the
+	 * frontend's extended info. If ever needed, we can support appending
+	 * it.
+	 */
+	if (ext_info && chan->ext_info != ext_info)
+		return -EOPNOTSUPP;
+	if (!chan->ext_info)
+		return 0;
+	/*
+	 * !\NOTE: this will break as soon as we have multiple backends on one
+	 * frontend and all of them extend channels. In that case, the core
+	 * backend code has no way to get the correct backend given the
+	 * iio device.
+	 *
+	 * One solution for this could be introducing a new backend
+	 * dedicated callback in struct iio_info so we can callback into the
+	 * frontend so it can give us the right backend given a chan_spec.
+	 */
+	iio_device_set_drvdata(indio_dev, back);
+
+	/* Don't allow backends to get creative and force their own handlers */
+	for (ext_info = chan->ext_info; ext_info->name; ext_info++) {
+		if (ext_info->read != iio_backend_ext_info_get)
+			return -EINVAL;
+		if (ext_info->write != iio_backend_ext_info_set)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_NS_GPL(iio_backend_extend_chan_spec, IIO_BACKEND);
 
 static void iio_backend_release(void *arg)
 {

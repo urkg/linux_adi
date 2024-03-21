@@ -371,7 +371,9 @@
 		reg = < 0x74204000 0x4000 >;
 		dmas = <&tx_dma 0>;
 		dma-names = "tx";
-		clocks = <&clkc 16>;
+		clocks = <&clkc 15>;
+
+		#io-backend-cells = <0>;
 	};
 };
 
