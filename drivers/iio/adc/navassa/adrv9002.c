@@ -3800,15 +3800,15 @@ static void adrv9002_fill_profile_read(struct adrv9002_rf_phy *phy)
  * the issue and properly fix things. Hopefully this won't one those things where
  * "we fix it later" means never!
  */
-int adrv9002_tx2_fixup(const struct adrv9002_rf_phy *phy)
+int adrv9002_tx2_fixup(const struct adrv9002_rf_phy *phy, unsigned int chan)
 {
-	const struct adrv9002_chan *tx = &phy->tx_channels[ADRV9002_CHANN_2].channel;
+	const struct adrv9002_chan *tx = &phy->tx_channels[chan].channel;
 	struct  adi_adrv9001_TxSsiTestModeCfg ssi_cfg = {
 		.testData = ADI_ADRV9001_SSI_TESTMODE_DATA_FIXED_PATTERN,
 	};
 	struct adi_adrv9001_TxSsiTestModeStatus dummy;
 
-	if (phy->chip->n_tx < ADRV9002_CHANN_MAX || phy->rx2tx2)
+	if (phy->rx2tx2)
 		return 0;
 
 	return api_call(phy, adi_adrv9001_Ssi_Tx_TestMode_Status_Inspect, tx->number, phy->ssi_type,
@@ -3863,9 +3863,13 @@ int adrv9002_init(struct adrv9002_rf_phy *phy, struct adi_adrv9001_Init *profile
 		goto error;
 	}
 
-	adrv9002_fill_profile_read(phy);
+	for (c = 0; c < phy->chip->n_tx; c++) {
+		ret = adrv9002_tx2_fixup(phy, c);
+		if (ret)
+			return ret;
+	}
 
-	return adrv9002_tx2_fixup(phy);
+	adrv9002_fill_profile_read(phy);
 error:
 	/*
 	 * Leave the device in a reset state in case of error. There's not much we can do if
