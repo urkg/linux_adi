@@ -195,7 +195,11 @@ ADI_API char* adi_library_strdup(const char* stringPtr)
         return NULL;
     }
 
+#ifndef __KERNEL__
     void* duplicateString = malloc(stringLength);
+#else
+    void* duplicateString = kmalloc(stringLength, GFP_KERNEL);
+#endif
 
     if (duplicateString == NULL)
     {
