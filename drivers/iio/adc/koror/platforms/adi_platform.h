@@ -513,7 +513,6 @@ ADI_API_EX void* (*adi_hal_TlsGet)(const adi_hal_TlsType_e tlsType);
  *        implementation defined in the platform files associated with the adi_hal_Platforms_e
  *        platform input parameter.
  * 
- * \param devHalInfo    Pointer to be assumed as an ADI HAL Configuration
  * \param platform      ADI Platform Type to be Configured
  * 
  * \retval adi_hal_Err_e - ADI_HAL_ERR_OK if successful
