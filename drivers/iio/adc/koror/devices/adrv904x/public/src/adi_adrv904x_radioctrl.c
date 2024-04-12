@@ -12,6 +12,11 @@
 * ADRV904X API Version: 2.10.0.4
 */
 
+#ifdef __KERNEL__
+#include <linux/kernel.h>
+#include <linux/log2.h>
+#endif
+
 #include "adi_adrv904x_radioctrl.h"
 #include "adi_adrv904x_cals.h"
 #include "adi_adrv904x_cpu.h"

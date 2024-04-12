@@ -13,6 +13,11 @@
 * ADRV904X API Version: 2.10.0.4
 */
 
+#ifdef __KERNEL__
+#include <linux/kernel.h>
+#include <linux/types.h>
+#endif
+
 #include "adi_adrv904x_hal.h"
 #include "adi_adrv904x_tx_types.h"
 #include "adi_adrv904x_error.h"

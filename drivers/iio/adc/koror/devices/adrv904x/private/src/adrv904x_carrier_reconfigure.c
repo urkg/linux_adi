@@ -11,6 +11,11 @@
  * ADRV904X API Version: 2.10.0.4
  */
 
+#ifdef __KERNEL__
+#include <linux/kernel.h>
+#include <linux/log2.h>
+#endif
+
 #include "../../private/bf/adrv904x_bf_cddc_funcs.h"
 #include "../../private/bf/adrv904x_bf_cddc_hb_dpath.h"
 #include "../../private/bf/adrv904x_bf_cduc_funcs.h"

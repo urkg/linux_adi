@@ -14,6 +14,11 @@
  * ADI common lib Version: 0.0.2.1
  */
 
+#ifdef __KERNEL__
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/slab.h>
+#endif
 #include "adi_common_error.h"
 #include "adi_platform_types.h"
 

@@ -14,6 +14,10 @@
 #ifndef _ADI_COMMON_LOG_H_
 #define _ADI_COMMON_LOG_H_
 
+#ifdef __KERNEL__
+#include <linux/kernel.h>
+#include <linux/time.h>
+#endif
 #include "adi_common_types.h"
 #include "adi_common_macros.h"
 #include "adi_common_user.h"
