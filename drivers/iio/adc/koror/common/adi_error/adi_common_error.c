@@ -139,8 +139,11 @@ ADI_API void adi_common_ErrStandardOutputWrite(const adi_common_ErrData_t* const
 
 ADI_API adi_common_ErrData_t* adi_common_ErrCreate(void)
 {
+#ifndef __KERNEL__
     adi_common_ErrData_t* errDataPtr = (adi_common_ErrData_t*)ADI_LIBRARY_CALLOC(1, sizeof(adi_common_ErrData_t));
-
+#else
+    adi_common_ErrData_t* errDataPtr = (adi_common_ErrData_t*)kzalloc(sizeof(adi_common_ErrData_t), GFP_KERNEL);
+#endif
     if (NULL == errDataPtr)
     {
         return NULL;
