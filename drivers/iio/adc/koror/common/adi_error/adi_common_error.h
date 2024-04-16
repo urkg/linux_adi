@@ -24,6 +24,12 @@
 #include "adi_common_error_types.h"
 #include "adi_common_log.h"
 
+#ifdef __KERNEL__
+#define PRIX32	"lX"
+#define PRIu32  "u"
+#define PRId64  "d"
+#define PRIX64	"llX"
+#endif
 
 /*
 * *******************************
