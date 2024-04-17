@@ -2724,7 +2724,11 @@ static adi_adrv904x_ErrAction_e randomTableGenCmodel( adi_adrv904x_Device_t* con
         array_size_per_rate_copy[j] = 0u;
     }
 
+#ifndef __KERNEL__
     log2_jesd_max_slot = log2(jesdMaxSlot);
+#else
+    log2_jesd_max_slot = __ilog2_u32(jesdMaxSlot);
+#endif
 
     /* Get random starting slots for each carrier */
     for (int c = 0; c < (int)ADI_ADRV904X_MAX_TXCHANNELS; c++)
@@ -2740,7 +2744,11 @@ static adi_adrv904x_ErrAction_e randomTableGenCmodel( adi_adrv904x_Device_t* con
             {
                 array_size_per_rate_copy[j] = array_size_per_rate[j];
             }
+#ifndef __KERNEL__
             log2_carr_rate = log2(jesd_to_carr_ratio[c]);
+#else
+            log2_carr_rate = __ilog2_u32(jesd_to_carr_ratio[c]);
+#endif
 #if (ADI_ENABLE_DELAY_MATCHING_LOG_PRINTS == 1)
             ADI_VARIABLE_LOG(&device->common, ADI_HAL_LOG_MSG, "log2_carr_rate %d = %d", c, log2_carr_rate);
 #endif
@@ -3679,7 +3687,11 @@ ADI_API adi_adrv904x_ErrAction_e adrv904x_CducDelayConfigurationCalculate(  adi_
         if ((carrierConfigs->channelMask & (1U << txIdx)) > 0U)
         {
             /* TPGSWE-7944: Store calculated latency into device profile */
+#ifndef __KERNEL__
             uint32_t clkCddcCducInkHz = tmpDly.jesdFrequency_kHz * pow(2, tmpDly.clkToJesdRatioLog2);
+#else
+            uint32_t clkCddcCducInkHz = tmpDly.jesdFrequency_kHz * (1 << tmpDly.clkToJesdRatioLog2);
+#endif
             device->devStateInfo.txCarrierLatencySolved.channel[txIdx].clkCddcCducInkHz = clkCddcCducInkHz;
 
             for (uint8_t carrierIdx = 0U; carrierIdx < ADI_ADRV904X_MAX_CARRIERS; carrierIdx++)
@@ -3756,7 +3768,11 @@ ADI_API adi_adrv904x_ErrAction_e adrv904x_CddcDelayConfigurationCalculate(  adi_
         if ((carrierConfigs->channelMask & (1U << rxIdx)) > 0U)
         {
             /* TPGSWE-7944: Store calculated latency into device profile */
+#ifndef __KERNEL__
             uint32_t clkCddcCducInkHz = tmpDly.jesdFrequency_kHz * pow(2, tmpDly.clkToJesdRatioLog2);
+#else
+            uint32_t clkCddcCducInkHz = tmpDly.jesdFrequency_kHz * (1 << tmpDly.clkToJesdRatioLog2);
+#endif
             device->devStateInfo.rxCarrierLatencySolved.channel[rxIdx].clkCddcCducInkHz = clkCddcCducInkHz;
 
             for (uint8_t carrierIdx = 0U; carrierIdx < ADI_ADRV904X_MAX_CARRIERS; carrierIdx++)
