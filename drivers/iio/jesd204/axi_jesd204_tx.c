@@ -589,10 +589,10 @@ static int axi_jesd204_tx_jesd204_link_pre_setup(struct jesd204_dev *jdev,
 		return JESD204_STATE_CHANGE_DONE;
 	}
 
-	dev_dbg(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__, lnk->link_id, jesd204_state_op_reason_str(reason));
+	dev_info(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__, lnk->link_id, jesd204_state_op_reason_str(reason));
 
 	ret = jesd204_link_get_device_clock(lnk, &link_rate);
-	dev_dbg(dev, "%s: Link%u device clock rate %lu (%d)\n",
+	dev_info(dev, "%s: Link%u device clock rate %lu (%d)\n",
 		__func__, lnk->link_id, link_rate, ret);
 	if (ret) {
 		dev_err(dev, "%s: Link%u get device clock rate failed (%d)\n",
@@ -601,7 +601,7 @@ static int axi_jesd204_tx_jesd204_link_pre_setup(struct jesd204_dev *jdev,
 	}
 
 	ret = jesd204_link_get_rate_khz(lnk, &lane_rate);
-	dev_dbg(dev, "%s: Link%u lane rate %lu (%d)\n",
+	dev_info(dev, "%s: Link%u lane rate %lu (%d)\n",
 		__func__, lnk->link_id, lane_rate, ret);
 	if (ret) {
 		dev_err(dev, "%s: Link%u get rate failed (%d)\n",
@@ -628,7 +628,7 @@ static int axi_jesd204_tx_jesd204_link_pre_setup(struct jesd204_dev *jdev,
 	}
 
 	rate = clk_round_rate(jesd->lane_clk, lane_rate);
-	dev_dbg(dev, "%s: Link%u round lane rate %lu returned %ld\n",
+	dev_info(dev, "%s: Link%u round lane rate %lu returned %ld\n",
 		__func__, lnk->link_id, lane_rate, rate);
 
 	if (rate != (long)lane_rate) {
@@ -641,12 +641,12 @@ static int axi_jesd204_tx_jesd204_link_pre_setup(struct jesd204_dev *jdev,
 		parent = clk_get_parent(jesd->lane_clk);
 		rate = clk_get_rate(parent);
 
-		dev_dbg(dev, "%s: Link%u lane parent rate %ld link_rate %ld\n",
+		dev_info(dev, "%s: Link%u lane parent rate %ld link_rate %ld\n",
 			__func__, lnk->link_id, rate, link_rate);
 
 		if (rate != (long)link_rate) {
 			rate = clk_round_rate(parent, link_rate);
-			dev_dbg(dev, "%s: Link%u round lane parent rate %ld\n",
+			dev_info(dev, "%s: Link%u round lane parent rate %ld\n",
 				__func__, lnk->link_id, rate);
 
 			if (rate == (long)link_rate) {
@@ -703,7 +703,7 @@ static int axi_jesd204_tx_jesd204_link_setup(struct jesd204_dev *jdev,
 		return JESD204_STATE_CHANGE_DONE;
 	}
 
-	dev_dbg(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__,
+	dev_info(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__,
 		lnk->link_id, jesd204_state_op_reason_str(reason));
 
 	if (jesd->num_lanes != lnk->num_lanes)
@@ -761,7 +761,7 @@ static int axi_jesd204_tx_jesd204_clks_enable(struct jesd204_dev *jdev,
 	struct device *dev = jesd204_dev_to_device(jdev);
 	struct axi_jesd204_tx *jesd = dev_get_drvdata(dev);
 
-	dev_dbg(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__, lnk->link_id, jesd204_state_op_reason_str(reason));
+	dev_info(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__, lnk->link_id, jesd204_state_op_reason_str(reason));
 
 	if (reason != JESD204_STATE_OP_REASON_INIT)
 		return JESD204_STATE_CHANGE_DONE;
@@ -781,7 +781,7 @@ static int axi_jesd204_tx_jesd204_link_enable(struct jesd204_dev *jdev,
 	struct device *dev = jesd204_dev_to_device(jdev);
 	struct axi_jesd204_tx *jesd = dev_get_drvdata(dev);
 
-	dev_dbg(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__, lnk->link_id, jesd204_state_op_reason_str(reason));
+	dev_info(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__, lnk->link_id, jesd204_state_op_reason_str(reason));
 
 	switch (reason) {
 	case JESD204_STATE_OP_REASON_INIT:
@@ -805,7 +805,7 @@ static int axi_jesd204_tx_jesd204_link_running(struct jesd204_dev *jdev,
 	unsigned int link_status;
 	int retry = 20;
 
-	dev_dbg(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__,
+	dev_info(dev, "%s:%d link_num %u reason %s\n", __func__, __LINE__,
 		lnk->link_id, jesd204_state_op_reason_str(reason));
 
 	if (reason == JESD204_STATE_OP_REASON_INIT) {
