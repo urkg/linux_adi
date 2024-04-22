@@ -2524,7 +2524,11 @@ static adi_adrv904x_ErrAction_e adrv904x_CpuMemDumpBinWrite(adi_adrv904x_Device_
     uint16_t   fileFormatVersion    = 0U;
     uint16_t   productId            = 0U;
     uint16_t   productRevision      = 0U;
+#ifdef __KERNEL__
+    time64_t     rawtime;
+#else
     time_t     rawtime;
+#endif
     struct tm *tmPtr;
 
     /* Generic record header varibales */
