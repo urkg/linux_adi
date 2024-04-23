@@ -47,8 +47,8 @@
 #define NUM_LANES(x)			FIELD_PREP(NUM_LANES_MASK, x)
 #define SDR_DDR_MASK			BIT(16)
 #define SDR_DDR(x)			FIELD_PREP(SDR_DDR_MASK, x)
-#define TX_ONLY_MASK			BIT(10)
-#define TX_ONLY(x)			FIELD_GET(TX_ONLY_MASK, x)
+#define USE_RX_CLK_FOR_TX_MASK		BIT(10)
+#define USE_RX_CLK_FOR_TX(x)		FIELD_GET(USE_RX_CLK_FOR_TX_MASK, x)
 
 #define IS_CMOS(cfg)			((cfg) & (ADI_CMOS_OR_LVDS_N))
 
@@ -252,7 +252,7 @@ static int adrv9002_post_setup(struct iio_dev *indio_dev)
 	 * supported...
 	 */
 	axi_config = axiadc_read(st, AIM_AXI_REG(ADI_TX1_REG_OFF, ADI_REG_CONFIG));
-	phy->tx_only = !TX_ONLY(axi_config);
+	phy->tx_only = !USE_RX_CLK_FOR_TX(axi_config);
 
 	ret = adrv9002_post_init(phy);
 	if (ret)
