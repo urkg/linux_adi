@@ -2871,7 +2871,7 @@ static int adrv9002_validate_profile(struct adrv9002_rf_phy *phy)
 		ADRV9002_TX2_BIT_NR, ADRV9002_ORX1_BIT_NR, ADRV9002_ORX2_BIT_NR,
 		ADRV9002_ELB1_BIT_NR, ADRV9002_ELB2_BIT_NR
 	};
-	int i, lo;
+	int i, lo, rx_ch_clk_source;
 
 	for (i = 0; i < ADRV9002_CHANN_MAX; i++) {
 		struct adrv9002_tx_chan *tx = &phy->tx_channels[i];
@@ -2997,14 +2997,29 @@ tx:
 					phy->tx_channels[0].channel.rate);
 				return -EINVAL;
 			}
-		} else if (!phy->tx_only && !rx->channel.enabled) {
-			dev_err(&phy->spi->dev, "TX%d cannot be enabled while RX%d is disabled",
-				i + 1, i + 1);
+		}
+
+		if (phy->tx_only != tx_cfg[i].txSsiConfig.txRefClockPin) {
+			dev_err(&phy->spi->dev, "TX%d ref clk path does not match the HDL build(USE_RX_CLK_FOR_TX)\n",
+				i + 1);
 			return -EINVAL;
-		} else if (!phy->tx_only && tx_cfg[i].txInputRate_Hz != rx->channel.rate) {
-			dev_err(&phy->spi->dev, "TX%d rate=%u must be equal to RX%d, rate=%ld\n",
-				i + 1, tx_cfg[i].txInputRate_Hz, i + 1, rx->channel.rate);
-			return -EINVAL;
+		}
+
+		if (!phy->tx_only) {
+			rx_ch_clk_source = phy->tx_channels[i].use_rx_clk;
+			if (phy->tx_channels[i].channel.enabled &&
+			    !phy->rx_channels[rx_ch_clk_source].channel.enabled) {
+				dev_err(&phy->spi->dev, "TX%d cannot be enabled while RX%d is disabled",
+					i + 1, rx_ch_clk_source + 1);
+				return -EINVAL;
+			} else {
+				if (!phy->tx_only && tx_cfg[i].txInputRate_Hz !=
+				     phy->rx_channels[i].channel.rate) {
+					dev_err(&phy->spi->dev, "TX%d rate=%u must be equal to RX%d, rate=%ld\n",
+						i + 1, tx_cfg[i].txInputRate_Hz, i + 1, phy->rx_channels[i].channel.rate);
+					return -EINVAL;
+				}
+			}
 		}
 
 		dev_dbg(&phy->spi->dev, "TX%d enabled\n", i + 1);

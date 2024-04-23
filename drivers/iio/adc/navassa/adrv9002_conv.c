@@ -211,8 +211,8 @@ static int adrv9002_post_setup(struct iio_dev *indio_dev)
 	struct axiadc_state *st = iio_priv(indio_dev);
 	struct axiadc_converter *conv = iio_device_get_drvdata(indio_dev);
 	struct adrv9002_rf_phy *phy = conv->phy;
-	u32 num_chan, axi_config = 0;
-	int i, ret;
+	u32 num_chan, axi_config = 0, rx1_cfg, rx2_cfg;
+	int i, ret, use_rx1_if_clk, use_rx2_if_clk;
 
 	num_chan = conv->chip_info->num_channels;
 
@@ -253,6 +253,31 @@ static int adrv9002_post_setup(struct iio_dev *indio_dev)
 	 */
 	axi_config = axiadc_read(st, AIM_AXI_REG(ADI_TX1_REG_OFF, ADI_REG_CONFIG));
 	phy->tx_only = !USE_RX_CLK_FOR_TX(axi_config);
+
+	/*
+	 * The user has the option to use the Rx interface clock for Tx
+	 * interface.
+	 * This option can be selected only at build time in HDL.
+	 * Also, we have the option to disable TRxn interfaces independently.
+	 * If Rx2 interface is disabled, but the USE_RX_CLK_FOR_TX option is set,
+	 * than Rx1 clock will be used for both  Tx1 and Tx2 interfaces.
+	 */
+	if (USE_RX_CLK_FOR_TX(axi_config)) {
+		rx1_cfg = axiadc_read(st, ADI_REG_CONFIG);
+		rx2_cfg = axiadc_read(st, AIM_AXI_REG(ADI_RX2_REG_OFF, ADI_REG_CONFIG));
+		use_rx1_if_clk = USE_RX_CLK_FOR_TX(rx1_cfg );
+		use_rx2_if_clk = USE_RX_CLK_FOR_TX(rx2_cfg);
+		if (use_rx1_if_clk & use_rx2_if_clk) {
+			phy->tx_channels[0].use_rx_clk = 0;
+			phy->tx_channels[1].use_rx_clk = 1;
+		} else if (use_rx1_if_clk) {
+			phy->tx_channels[0].use_rx_clk = 0;
+			phy->tx_channels[1].use_rx_clk = 0;
+		} else if (use_rx1_if_clk) {
+			phy->tx_channels[0].use_rx_clk = 1;
+			phy->tx_channels[1].use_rx_clk = 1;
+		}
+	}
 
 	ret = adrv9002_post_init(phy);
 	if (ret)

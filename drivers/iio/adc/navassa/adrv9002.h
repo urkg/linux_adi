@@ -198,6 +198,7 @@ struct adrv9002_tx_chan {
 	u8 dac_boost_en;
 	u8 elb_en;
 	u8 ext_path_calib;
+	u8 use_rx_clk;
 #ifdef CONFIG_DEBUG_FS
 	struct adi_adrv9001_TxSsiTestModeCfg ssi_test;
 	u8 loopback;
