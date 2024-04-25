@@ -755,8 +755,7 @@ static int adc_probe(struct platform_device *pdev)
 		indio_dev->num_channels = info->num_channels;
 	}
 
-	ret = devm_iio_dmaengine_buffer_setup(&pdev->dev, indio_dev, "rx",
-					      IIO_BUFFER_DIRECTION_IN);
+	ret = devm_iio_dmaengine_buffer_setup(&pdev->dev, indio_dev, "rx");
 	if (ret)
 		return ret;
 

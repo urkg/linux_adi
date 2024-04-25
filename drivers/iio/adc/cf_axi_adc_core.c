@@ -1171,8 +1171,7 @@ static int axiadc_probe(struct platform_device *pdev)
 
 	if (!st->dp_disable && !axiadc_read(st, ADI_AXI_REG_ID) &&
 		of_find_property(pdev->dev.of_node, "dmas", NULL)) {
-		ret = devm_iio_dmaengine_buffer_setup(&pdev->dev, indio_dev,
-						      "rx", IIO_BUFFER_DIRECTION_IN);
+		ret = devm_iio_dmaengine_buffer_setup(&pdev->dev, indio_dev, "rx");
 		if (ret < 0)
 			return ret;
 	}

@@ -579,8 +579,7 @@ static int ad400x_probe(struct spi_device *spi)
 
 	if (spi_engine_offload_supported(spi)) {
 		ret = devm_iio_dmaengine_buffer_setup(indio_dev->dev.parent,
-						      indio_dev, "rx",
-						      IIO_BUFFER_DIRECTION_IN);
+						      indio_dev, "rx");
 		if (ret)
 			return ret;
 

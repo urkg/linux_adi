@@ -47,6 +47,7 @@ enum iio_block_state {
 struct iio_dma_buffer_block {
 	/* May only be accessed by the owner of the block */
 	struct list_head head;
+	size_t bytes_used;
 	struct iio_buffer_block block;
 
 	/*
@@ -55,6 +56,7 @@ struct iio_dma_buffer_block {
 	 */
 	void *vaddr;
 	dma_addr_t phys_addr;
+	size_t size;
 	struct iio_dma_buffer_queue *queue;
 
 	/* Must not be accessed outside the core. */
@@ -64,6 +66,7 @@ struct iio_dma_buffer_block {
 	 * queue->list_lock if the block is not owned by the core.
 	 */
 	enum iio_block_state state;
+	bool fileio;
 };
 
 /**
@@ -72,12 +75,17 @@ struct iio_dma_buffer_block {
  * @active_block: Block being used in read()
  * @pos: Read offset in the active block
  * @block_size: Size of each block
+ * @next_dequeue: index of next block that will be dequeued
+ * @enabled: Whether the buffer is operating in fileio mode
  */
 struct iio_dma_buffer_queue_fileio {
 	struct iio_dma_buffer_block *blocks[2];
 	struct iio_dma_buffer_block *active_block;
 	size_t pos;
 	size_t block_size;
+
+	bool enabled;
+	unsigned int next_dequeue;
 };
 
 /**
@@ -104,14 +112,17 @@ struct iio_dma_buffer_queue {
 	struct mutex lock;
 	spinlock_t list_lock;
 	struct list_head incoming;
-	struct list_head outgoing;
 
 	bool active;
 
+	/*
+	 * Out of tree stuff.... driver_data is mostly needed by the legacy axi-dac.
+	 * The other bits till @fileio are the legacy mmap interface that will
+	 * be removed as soon as dmabuf is on.
+	 */
 	void *driver_data;
 
-	unsigned int poll_wakup_flags;
-
+	struct list_head outgoing;
 	unsigned int num_blocks;
 	struct iio_dma_buffer_block **blocks;
 	unsigned int max_offset;
@@ -140,7 +151,9 @@ int iio_dma_buffer_disable(struct iio_buffer *buffer,
 	struct iio_dev *indio_dev);
 int iio_dma_buffer_read(struct iio_buffer *buffer, size_t n,
 	char __user *user_buffer);
-size_t iio_dma_buffer_data_available(struct iio_buffer *buffer);
+int iio_dma_buffer_write(struct iio_buffer *buffer, size_t n,
+			 const char __user *user_buffer);
+size_t iio_dma_buffer_usage(struct iio_buffer *buffer);
 int iio_dma_buffer_set_bytes_per_datum(struct iio_buffer *buffer, size_t bpd);
 int iio_dma_buffer_set_length(struct iio_buffer *buffer, unsigned int length);
 int iio_dma_buffer_request_update(struct iio_buffer *buffer);

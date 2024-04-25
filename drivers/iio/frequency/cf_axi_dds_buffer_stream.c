@@ -91,17 +91,14 @@ static const struct iio_dma_buffer_ops dds_buffer_dma_buffer_ops = {
 
 int cf_axi_dds_configure_buffer(struct iio_dev *indio_dev)
 {
-	struct iio_buffer *buffer;
+	int ret;
 
-	buffer = devm_iio_dmaengine_buffer_alloc(indio_dev->dev.parent, "tx",
-						 &dds_buffer_dma_buffer_ops, indio_dev);
-	if (IS_ERR(buffer))
-		return PTR_ERR(buffer);
+	ret = devm_iio_dmaengine_buffer_setup_ext(indio_dev->dev.parent, indio_dev, "tx",
+						  &dds_buffer_dma_buffer_ops,
+						  IIO_BUFFER_DIRECTION_OUT, indio_dev);
+	if (ret)
+		return ret;
 
-	buffer->direction = IIO_BUFFER_DIRECTION_OUT;
-	iio_device_attach_buffer(indio_dev, buffer);
-
-	indio_dev->modes |= INDIO_BUFFER_HARDWARE;
 	indio_dev->setup_ops = &dds_buffer_setup_ops;
 
 	return 0;

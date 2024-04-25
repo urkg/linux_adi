@@ -184,8 +184,7 @@ static int axiadc_probe(struct platform_device *pdev)
 	st->iio_info = axiadc_info;
 	indio_dev->info = &st->iio_info;
 
-	ret = devm_iio_dmaengine_buffer_setup(&pdev->dev, indio_dev, "ad-mc-speed-dma",
-					      IIO_BUFFER_DIRECTION_IN);
+	ret = devm_iio_dmaengine_buffer_setup(&pdev->dev, indio_dev, "ad-mc-speed-dma");
 	if (ret < 0)
 		return ret;
 
