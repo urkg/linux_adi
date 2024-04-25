@@ -64,12 +64,13 @@
 		};
 	};
 
-	axi_ad9739a_core: axi-ad9739a-lpc@74204000 {
-		compatible = "adi,axi-ad9739a-8.00.b";
+	axi_ad9739a_core: axi-dac-lpc@74204000 {
+		compatible = "adi,axi-dac-9.1.b";
 		reg = < 0x74204000 0x4000 >;
 		dmas = <&tx_dma 0>;
 		dma-names = "tx";
-		spibus-connected = <&ad9739a>;
+                clocks = <&clkc 16>;
+                #io-backend-cells = <0>;
 	};
 };
 
@@ -98,8 +99,8 @@
 		spi-max-frequency = <10000000>;
 		clocks = <&adf4350_clkout>;
 		clock-names = "dac_clk";
-		//adi,mix-mode-enable;
-		//adi,full-scale-current-ua = <25000>;
+
+                io-backends = <&axi_ad9739a_core>;
 	};
 };
 
