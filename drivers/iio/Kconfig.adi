@@ -198,4 +198,6 @@ config IIO_ALL_ADI_DRIVERS
 	imply MAX11205
 	imply ADRV9025
 	imply ADL5580
+	imply AD9739A
+	imply ADI_AXI_DAC
 
