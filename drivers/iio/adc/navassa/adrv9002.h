@@ -77,6 +77,12 @@ enum adrv9002_clocks {
 	NUM_ADRV9002_CLKS,
 };
 
+enum adrv9002_tx_ssi_clk {
+	ADRV9002_TX_REF_CLK,
+	ADRV9002_RX1_REF_CLK,
+	ADRV9002_RX2_REF_CLK,
+};
+
 enum adrv9002_rx_ext_info {
 	RX_QEC_FIC,
 	RX_QEC_W_POLY,
@@ -194,6 +200,7 @@ struct adrv9002_tx_chan {
 	struct adi_adrv9001_DpdInitCfg *dpd_init;
 	struct adi_adrv9001_DpdCfg *dpd;
 	struct adi_adrv9001_TxAttenuationPinControlCfg *pin_cfg;
+	enum adrv9002_tx_ssi_clk ref_clk;
 	u8 port_sel;
 	u8 dac_boost_en;
 	u8 elb_en;
