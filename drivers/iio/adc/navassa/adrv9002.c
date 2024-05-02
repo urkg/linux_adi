@@ -2902,10 +2902,10 @@ static int adrv9002_rx_validate_profile(struct adrv9002_rf_phy *phy, unsigned in
 static int adrv9002_tx_validate_profile(struct adrv9002_rf_phy *phy, unsigned int idx)
 {
 	const struct adi_adrv9001_TxProfile *tx_cfg = phy->curr_profile->tx.txProfile;
-	struct adrv9002_rx_chan *rx = &phy->rx_channels[idx];
+	struct adrv9002_tx_chan *tx = &phy->tx_channels[idx];
+	struct adrv9002_rx_chan *rx;
 	struct device *dev = &phy->spi->dev;
 
-	/* check @tx_only comments in adrv9002.h to better understand the next checks */
 	if (phy->ssi_type != tx_cfg[idx].txSsiConfig.ssiType) {
 		dev_err(dev, "SSI interface mismatch. PHY=%d, TX%d=%d\n",
 			phy->ssi_type, idx + 1,  tx_cfg[idx].txSsiConfig.ssiType);
@@ -2926,16 +2926,15 @@ static int adrv9002_tx_validate_profile(struct adrv9002_rf_phy *phy, unsigned in
 	if (phy->rx2tx2) {
 		struct adrv9002_rx_chan *rx1 = &phy->rx_channels[0];
 		struct adrv9002_tx_chan *tx1 = &phy->tx_channels[0];
-
-		if (!phy->tx_only && !rx1->channel.enabled) {
-			/*
-			 * pretty much means that in this case either all channels are
-			 * disabled, which obviously does not make sense, or RX1 must
-			 * be enabled...
-			 */
+		/*
+		 * In rx2tx2 mode, if TX used RX as the reference clock, we just need to
+		 * validate against RX1 since in this mode RX2 cannot be enabled without RX1. The
+		 * same goes for the rate that must be the same
+		 */
+		if (tx->rx_ref_clk && !rx1->channel.enabled) {
 			dev_err(dev, "In rx2tx2, TX%d cannot be enabled while RX1 is disabled",
 				idx + 1);
-				return -EINVAL;
+			return -EINVAL;
 		}
 
 		if (idx && !tx1->channel.enabled) {
@@ -2944,7 +2943,7 @@ static int adrv9002_tx_validate_profile(struct adrv9002_rf_phy *phy, unsigned in
 			return -EINVAL;
 		}
 
-		if (!phy->tx_only && tx_cfg[idx].txInputRate_Hz != rx1->channel.rate) {
+		if (tx->rx_ref_clk && tx_cfg[idx].txInputRate_Hz != rx1->channel.rate) {
 			/*
 			 * pretty much means that in this case, all ports must have
 			 * the same rate. We match against RX1 since RX2 can be disabled
@@ -2955,7 +2954,7 @@ static int adrv9002_tx_validate_profile(struct adrv9002_rf_phy *phy, unsigned in
 				return -EINVAL;
 		}
 
-		if (phy->tx_only && idx && tx_cfg[idx].txInputRate_Hz != tx1->channel.rate) {
+		if (!tx->rx_ref_clk && idx && tx_cfg[idx].txInputRate_Hz != tx1->channel.rate) {
 			dev_err(dev, "In rx2tx2, TX%d rate=%u must be equal to TX1, rate=%ld\n",
 				idx + 1, tx_cfg[idx].txInputRate_Hz, tx1->channel.rate);
 			return -EINVAL;
@@ -2964,14 +2963,23 @@ static int adrv9002_tx_validate_profile(struct adrv9002_rf_phy *phy, unsigned in
 		return 0;
 	}
 
-	if (!phy->tx_only && !rx->channel.enabled) {
-		dev_err(dev, "TX%d cannot be enabled while RX%d is disabled", idx + 1, idx + 1);
+	if (!tx->rx_ref_clk)
+		return 0;
+
+	rx = &phy->rx_channels[tx->rx_ref_clk - 1];
+	/*
+	 * Alright, Some RX is driving us... We need to make sure it is enabled and we have the
+	 * same rate.
+	 */
+	if (!rx->channel.enabled) {
+		dev_err(dev, "TX%d cannot be enabled while RX%d is disabled", idx + 1,
+			rx->channel.number);
 		return -EINVAL;
 	}
 
-	if (!phy->tx_only && tx_cfg[idx].txInputRate_Hz != rx->channel.rate) {
-		dev_err(dev, "TX%d rate=%u must be equal to RX%d, rate=%ld\n",
-			idx + 1, tx_cfg[idx].txInputRate_Hz, idx + 1, rx->channel.rate);
+	if (rx->channel.rate != tx_cfg[idx].txInputRate_Hz) {
+		dev_err(dev, "TX%d rate=%u must be equal to RX%d, rate=%ld\n", idx + 1,
+			tx_cfg[idx].txInputRate_Hz, rx->channel.number, rx->channel.rate);
 		return -EINVAL;
 	}
 
@@ -2993,12 +3001,10 @@ static int adrv9002_validate_profile(struct adrv9002_rf_phy *phy)
 	int i, lo, ret;
 
 	for (i = 0; i < ADRV9002_CHANN_MAX; i++) {
-		struct adrv9002_tx_chan *tx = &phy->tx_channels[i];
 		struct adrv9002_rx_chan *rx = &phy->rx_channels[i];
 
-		/* rx validations */
 		if (!test_bit(ports[i * 2], &rx_mask))
-			goto tx;
+			continue;
 
 		lo = adrv9002_ext_lo_validate(phy, i, false);
 		if (lo < 0)
@@ -3017,15 +3023,14 @@ static int adrv9002_validate_profile(struct adrv9002_rf_phy *phy)
 			rx->channel.ext_lo = &phy->ext_los[lo];
 		rx->channel.lo = i ? clks->rx2LoSelect : clks->rx1LoSelect;
 		rx->channel.lo_cals = ADI_ADRV9001_INIT_LO_RETUNE & ~ADI_ADRV9001_INIT_CAL_TX_ALL;
-tx:
-		/* tx validations*/
+	}
+
+	for (i = 0; i < phy->chip->n_tx; i++) {
+		struct adrv9002_tx_chan *tx = &phy->tx_channels[i];
+		struct adrv9002_rx_chan *rx = &phy->rx_channels[i];
+
 		if (!test_bit(ports[i * 2 + 1], &tx_mask))
 			continue;
-
-		if (i >= phy->chip->n_tx) {
-			dev_err(&phy->spi->dev, "TX%d not supported for this device\n", i + 1);
-			return -EINVAL;
-		}
 
 		lo = adrv9002_ext_lo_validate(phy, i, true);
 		if (lo < 0)
