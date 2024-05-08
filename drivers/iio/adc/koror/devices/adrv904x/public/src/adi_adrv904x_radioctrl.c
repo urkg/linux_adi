@@ -13,6 +13,9 @@
 */
 
 #ifdef __KERNEL__
+// ToDo - FixMe - Replace with linux/int_log.h when update to v6.6 or newer
+// Required for intlog10
+#include <media/dvb_math.h>
 #include <linux/kernel.h>
 #include <linux/log2.h>
 #endif
@@ -8628,7 +8631,9 @@ ADI_API adi_adrv904x_ErrAction_e adi_adrv904x_RadioCtrlAntCalCarrierCfgGet(adi_a
     uint8_t value = 0U;
     int32_t carrierGain = 0;
     uint32_t carrierGainReg = 0U;
+#ifndef __KERNEL__
     const uint32_t DIG_GAIN_MULT = 65536U;
+#endif
     uint32_t extendedCoreScratchRegBaseAddress = 0U;
     uint32_t tempAddress = 0U;
     
@@ -8734,7 +8739,11 @@ ADI_API adi_adrv904x_ErrAction_e adi_adrv904x_RadioCtrlAntCalCarrierCfgGet(adi_a
         if (carrierGainReg != 0U)
         {
             /* Convert from 7.16 to mdB.  value in mdB = (1000*20*log10(reg value/2^16)) */
+#ifndef __KERNEL__
             carrierGain = (int32_t)(1000U * 20U * (double)log10((double)carrierGainReg / DIG_GAIN_MULT));
+#else
+	    carrierGain = (1000U * 20U * (intlog10(carrierGainReg) - 80807124)) >> 24;
+#endif
         }
 
         antCalCarrierCfg->rxCarrierGainForAntCal[i] = carrierGain;
@@ -8758,8 +8767,12 @@ ADI_API adi_adrv904x_ErrAction_e adi_adrv904x_RadioCtrlAntCalCarrierCfgGet(adi_a
         if (carrierGainReg != 0)
         {
             /* Convert from 7.16 to mdB.  value in mdB = (1000*20*log10(reg value/2^16)) */
+#ifndef __KERNEL__
             carrierGain = (int32_t)(1000U * 20U * (double)log10((double)carrierGainReg / DIG_GAIN_MULT));
-        }
+#else
+	    carrierGain = (1000U * 20U * (intlog10(carrierGainReg) - 80807124)) >> 24;
+#endif
+	}
 
         antCalCarrierCfg->txCarrierGainForAntCal[i] = carrierGain;
     }
