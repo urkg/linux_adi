@@ -43,6 +43,9 @@
 
 #define ADI_FILE ADI_ADRV904X_FILE_PUBLIC_TX
 
+#ifdef __KERNEL__
+#define UINT16_MAX		(65535)
+#endif
 
 #define ADI_ADVRV904X_TX_DUC1_PLAYBACK_RAM_OFFSET 0x8000U   /*!< DUC1 Playback RAM Offset */
 #define ADI_ADVRV904X_TX0_PLAYBACK_RAM_BASEADDR 0x60800000U /*!< Base Address of Playback RAM for TX0 */
