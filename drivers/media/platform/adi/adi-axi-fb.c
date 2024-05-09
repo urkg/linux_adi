@@ -13,8 +13,8 @@
 #include <linux/fpga/adi-axi-common.h>
 
 /* DMA defines */
-#define DMAC_REG_CTRL				0x400
-#define DMAC_REG_START_TRANSFER			0x408
+#define DMAC_REG_CONTROL			0x400
+#define DMAC_REG_TRANSFER_SUBMIT		0x408
 #define DMAC_REG_FLAGS				0x40c
 #define DMAC_REG_DEST_ADDRESS			0x410
 #define DMAC_REG_SRC_ADDRESS			0x414
@@ -22,8 +22,8 @@
 #define DMAC_REG_Y_LENGTH			0x41c
 #define DMAC_REG_DEST_STRIDE			0x420
 #define DMAC_REG_SRC_STRIDE			0x424
-#define DMAC_REG_FRAME_LOCK_CONFIG		0x454
-#define DMAC_REG_FRAME_LOCK_STRIDE		0x458
+#define DMAC_REG_FRAMELOCK_CONFIG		0x458
+#define DMAC_REG_FRAMELOCK_STRIDE		0x45c
 
 #define DMAC_CTRL_ENABLE			BIT(0)
 #define DMAC_TRANSFER_SUBMIT			BIT(0)
@@ -103,10 +103,10 @@ static void adi_fb_init(struct frame_buffer *buff, int dma_dir)
 	}
 
 	/* reset DMAC */
-	adi_fb_reg_clr(base_addr, DMAC_REG_CTRL, DMAC_CTRL_ENABLE);
+	adi_fb_reg_clr(base_addr, DMAC_REG_CONTROL, DMAC_CTRL_ENABLE);
 
 	/* Init DMAC */
-	adi_fb_reg_set(base_addr, DMAC_REG_CTRL, DMAC_CTRL_ENABLE);
+	adi_fb_reg_set(base_addr, DMAC_REG_CONTROL, DMAC_CTRL_ENABLE);
 	adi_fb_reg_write(base_addr, DMAC_REG_FLAGS, DMAC_DEFAULT_FLAGS);
 
 	adi_fb_reg_write(base_addr, dir, buff->video_ram_buf.start);
@@ -119,12 +119,12 @@ static void adi_fb_init(struct frame_buffer *buff, int dma_dir)
 	adi_fb_reg_write(base_addr, DMAC_REG_Y_LENGTH,
 			 (buff->resolution[1] - 1));
 
-	adi_fb_reg_write(base_addr, DMAC_REG_FRAME_LOCK_CONFIG, flock_cfg);
+	adi_fb_reg_write(base_addr, DMAC_REG_FRAMELOCK_CONFIG, flock_cfg);
 	/* total active */
-	adi_fb_reg_write(base_addr, DMAC_REG_FRAME_LOCK_STRIDE,
+	adi_fb_reg_write(base_addr, DMAC_REG_FRAMELOCK_STRIDE,
 			buff->frame_stride);
 	/* submit transfer */
-	adi_fb_reg_set(base_addr, DMAC_REG_START_TRANSFER,
+	adi_fb_reg_set(base_addr, DMAC_REG_TRANSFER_SUBMIT,
 		       DMAC_TRANSFER_SUBMIT);
 }
 
