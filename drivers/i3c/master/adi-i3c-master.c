@@ -258,10 +258,9 @@ static void adi_i3c_master_end_xfer_locked(struct adi_i3c_master *master,
 	     !(status0 & FIFO_STATUS_CMDR_EMPTY);
 	     status0 = readl(master->regs + REG_FIFO_STATUS)) {
 		struct adi_i3c_cmd *cmd;
-		u32 cmdr, rx_len, id;
+		u32 cmdr, rx_len;
 
 		cmdr = readl(master->regs + REG_CMDR_FIFO);
-		id = CMDR_SYNC(cmdr);
 
 		cmd = &xfer->cmds[index++];
 		rx_len = min_t(u32, CMDR_XFER_BYTES(cmdr), cmd->rx_len);
@@ -327,6 +326,10 @@ static void adi_i3c_master_unqueue_xfer(struct adi_i3c_master *master,
 	else
 		list_del_init(&xfer->node);
 
+	writel(0x01, master->regs + REG_ENABLE);
+	writel(0x00, master->regs + REG_ENABLE);
+	writel(IRQ_PENDING_CMDR_PENDING, master->regs + REG_IRQ_MASK);
+
 	spin_unlock_irqrestore(&master->xferqueue.lock, flags);
 }
 
@@ -353,7 +356,6 @@ static int adi_i3c_master_send_ccc_cmd(struct i3c_master_controller *m,
 	struct adi_i3c_master *master = to_adi_i3c_master(m);
 	struct adi_i3c_xfer *xfer;
 	struct adi_i3c_cmd *ccmd;
-	int ret;
 
 	xfer = adi_i3c_master_alloc_xfer(master, 1);
 	if (!xfer)
@@ -380,7 +382,6 @@ static int adi_i3c_master_send_ccc_cmd(struct i3c_master_controller *m,
 	if (!wait_for_completion_timeout(&xfer->comp, msecs_to_jiffies(1000)))
 		adi_i3c_master_unqueue_xfer(master, xfer);
 
-	ret = xfer->ret;
 	cmd->err = adi_i3c_cmd_get_err(&xfer->cmds[0]);
 	kfree(xfer);
 
@@ -683,7 +684,6 @@ static int adi_i3c_master_do_daa(struct i3c_master_controller *m)
 	writel(irq_mask | IRQ_PENDING_DAA_PENDING,
 	       master->regs + REG_IRQ_MASK);
 
-	//sleep(3000);
 	ret = i3c_master_entdaa_locked(&master->base);
 
 	writel(irq_mask, master->regs + REG_IRQ_MASK);
@@ -902,7 +902,6 @@ static int adi_i3c_master_enable_ibi(struct i3c_dev_desc *dev)
 {
 	struct i3c_master_controller *m = i3c_dev_get_master(dev);
 	struct adi_i3c_master *master = to_adi_i3c_master(m);
-	int ret;
 
 	writel(REG_IBI_CONFIG_LISTEN | REG_IBI_CONFIG_ENABLE,
 	       master->regs + REG_IBI_CONFIG);
@@ -910,9 +909,8 @@ static int adi_i3c_master_enable_ibi(struct i3c_dev_desc *dev)
 	writel(readl(master->regs + REG_IRQ_MASK) | IRQ_PENDING_IBI_PENDING,
 	       master->regs + REG_IRQ_MASK);
 
-	ret = i3c_master_enec_locked(m, dev->info.dyn_addr,
-				     I3C_CCC_EVENT_SIR);
-	return ret;
+	return i3c_master_enec_locked(m, dev->info.dyn_addr,
+				      I3C_CCC_EVENT_SIR);
 }
 
 static int adi_i3c_master_request_ibi(struct i3c_dev_desc *dev,
@@ -992,7 +990,7 @@ static const struct i3c_master_controller_ops adi_i3c_master_ops = {
 
 static const struct of_device_id adi_i3c_master_of_match[] = {
 	{ .compatible = "adi,i3c-master" },
-	{},
+	{}
 };
 
 static int adi_i3c_master_probe(struct platform_device *pdev)
@@ -1032,7 +1030,6 @@ static int adi_i3c_master_probe(struct platform_device *pdev)
 	}
 
 	writel(0x00, master->regs + REG_ENABLE);
-	writel(0xff, master->regs + REG_IRQ_PENDING);
 	writel(0x00, master->regs + REG_IRQ_MASK);
 
 	ret = devm_request_irq(&pdev->dev, irq, adi_i3c_master_irq, 0,
