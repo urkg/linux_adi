@@ -11,19 +11,20 @@
 #include <linux/hwmon.h>
 #include <linux/i2c.h>
 #include <linux/mutex.h>
+#include <linux/of_device.h>
 #include <linux/regmap.h>
 #include <linux/regulator/consumer.h>
-#include <linux/of_device.h>
 
-#define MAX31827_T_REG	0x0
+#define MAX31827_T_REG			0x0
 #define MAX31827_CONFIGURATION_REG	0x2
-#define MAX31827_TH_REG	0x4
-#define MAX31827_TL_REG 0x6
-#define MAX31827_TH_HYST_REG	0x8
-#define MAX31827_TL_HYST_REG	0xA
+#define MAX31827_TH_REG			0x4
+#define MAX31827_TL_REG			0x6
+#define MAX31827_TH_HYST_REG		0x8
+#define MAX31827_TL_HYST_REG		0xA
 
 #define MAX31827_CONFIGURATION_1SHOT_MASK	BIT(0)
 #define MAX31827_CONFIGURATION_CNV_RATE_MASK	GENMASK(3, 1)
+#define MAX31827_CONFIGURATION_PEC_EN_MASK	BIT(4)
 #define MAX31827_CONFIGURATION_TIMEOUT_MASK	BIT(5)
 #define MAX31827_CONFIGURATION_RESOLUTION_MASK	GENMASK(7, 6)
 #define MAX31827_CONFIGURATION_ALRM_POL_MASK	BIT(8)
@@ -344,7 +345,7 @@ static int max31827_write(struct device *dev, enum hwmon_sensor_types type,
 		switch (attr) {
 		case hwmon_temp_enable:
 			if (val >> 1)
-				return -EOPNOTSUPP;
+				return -EINVAL;
 
 			mutex_lock(&st->lock);
 			/**
@@ -384,7 +385,7 @@ static int max31827_write(struct device *dev, enum hwmon_sensor_types type,
 	case hwmon_chip:
 		if (attr == hwmon_chip_update_interval) {
 			if (!st->enable)
-				return -EOPNOTSUPP;
+				return -EINVAL;
 
 			/*
 			 * Convert the desired conversion rate into register
@@ -474,6 +475,52 @@ static ssize_t temp1_resolution_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RW(temp1_resolution);
+
+static ssize_t pec_show(struct device *dev, struct device_attribute *devattr,
+			char *buf)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", !!(client->flags & I2C_CLIENT_PEC));
+}
+
+static ssize_t pec_store(struct device *dev, struct device_attribute *devattr,
+			 const char *buf, size_t count)
+{
+	struct max31827_state *st = dev_get_drvdata(dev);
+	struct i2c_client *client = to_i2c_client(dev);
+	unsigned int val;
+	int err;
+
+	err = kstrtouint(buf, 10, &val);
+	if (err < 0)
+		return err;
+
+	switch (val) {
+	case 0:
+		err = regmap_clear_bits(st->regmap, MAX31827_CONFIGURATION_REG,
+					MAX31827_CONFIGURATION_PEC_EN_MASK);
+		if (err)
+			return err;
+
+		client->flags &= ~I2C_CLIENT_PEC;
+		break;
+	case 1:
+		err = regmap_set_bits(st->regmap, MAX31827_CONFIGURATION_REG,
+				      MAX31827_CONFIGURATION_PEC_EN_MASK);
+		if (err)
+			return err;
+
+		client->flags |= I2C_CLIENT_PEC;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(pec);
 
 static struct attribute *max31827_attrs[] = {
 	&dev_attr_temp1_resolution.attr,
@@ -578,6 +625,11 @@ static int max31827_init_client(struct max31827_state *st,
 	return regmap_write(st->regmap, MAX31827_CONFIGURATION_REG, res);
 }
 
+static void max31827_remove_pec(void *dev)
+{
+	device_remove_file(dev, &dev_attr_pec);
+}
+
 static const struct hwmon_channel_info *max31827_info[] = {
 	HWMON_CHANNEL_INFO(temp, HWMON_T_ENABLE | HWMON_T_INPUT | HWMON_T_MIN |
 					 HWMON_T_MIN_HYST | HWMON_T_MIN_ALARM |
@@ -627,6 +679,16 @@ static int max31827_probe(struct i2c_client *client)
 	if (err)
 		return err;
 
+	if (i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_PEC)) {
+		err = device_create_file(dev, &dev_attr_pec);
+		if (err)
+			return err;
+
+		err = devm_add_action_or_reset(dev, max31827_remove_pec, dev);
+		if (err)
+			return err;
+	}
+
 	hwmon_dev = devm_hwmon_device_register_with_info(dev, client->name, st,
 							 &max31827_chip_info,
 							 max31827_groups);
@@ -652,12 +714,11 @@ static const struct of_device_id max31827_of_match[] = {
 MODULE_DEVICE_TABLE(of, max31827_of_match);
 
 static struct i2c_driver max31827_driver = {
-	.class = I2C_CLASS_HWMON,
 	.driver = {
 		.name = "max31827",
 		.of_match_table = max31827_of_match,
 	},
-	.probe_new = max31827_probe,
+	.probe = max31827_probe,
 	.id_table = max31827_i2c_ids,
 };
 module_i2c_driver(max31827_driver);
