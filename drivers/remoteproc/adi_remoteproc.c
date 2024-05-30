@@ -243,6 +243,11 @@ static int is_empty(struct ldr_hdr *hdr)
 	return hdr->bcode_flag.bFlag_ignore || (hdr->byte_count == 0);
 }
 
+static int is_final_and_empty(struct ldr_hdr *hdr)
+{
+	return is_final(hdr) && is_empty(hdr);
+}
+
 static void load_callback(void *p)
 {
 	struct completion *cmp = p;
@@ -250,62 +255,23 @@ static void load_callback(void *p)
 	complete(cmp);
 }
 
-/* @todo this needs to return status */
-/* @todo the error paths here leak tremendously, this needs further cleanup */
-static void ldr_load(struct adi_rproc_data *rproc_data)
+static int verify_buffer(struct adi_rproc_data *rproc_data)
 {
-	struct ldr_hdr *block_hdr = NULL;
-	struct ldr_hdr *next_hdr = NULL;
-	uint8_t *virbuf = (uint8_t *) rproc_data->mem_virt;
-	dma_addr_t phybuf = rproc_data->mem_handle;
-	int offset;
-	uint32_t byte_cnt_offset;
+
+	uint8_t ret = 0;
+//	uint8_t *virbuf, *phybuf;
+
+//	phybuf = (uint8_t *) rproc_data->mem_handle;
+//	virbuf = (uint8_t *) rproc_data->virt;
+
+
+
+//				if (rproc_data->verify) {
 // part of verify buffer code
 //	int i;
 //	uint32_t verfied = 0;
 //	uint8_t *pCompareBuffer;
 //	uint8_t *pVerifyBuffer;
-	struct dma_chan *chan = dma_find_channel(DMA_MEMCPY);
-	struct dma_async_tx_descriptor *tx;
-	struct completion cmp;
-
-	if (!chan) {
-		dev_err(rproc_data->dev, "Could not find dma memcpy channel\n");
-		return;
-	}
-
-	init_completion(&cmp);
-
-	do {
-		/* read the header */
-		block_hdr = (struct ldr_hdr *) virbuf;
-		if (block_hdr->bcode_flag.bFlag_fill)
-			byte_cnt_offset = 0;
-		else
-			byte_cnt_offset = block_hdr->byte_count;
-
-		offset = sizeof(struct ldr_hdr) + byte_cnt_offset;
-
-		next_hdr = (struct ldr_hdr *) (virbuf + offset);
-		tx = NULL;
-
-		/* Overwrite the ldr_load_addr */
-		if (block_hdr->bcode_flag.bFlag_first)
-			rproc_data->ldr_load_addr = (unsigned long)block_hdr->target_addr;
-
-		if (!is_empty(block_hdr)) {
-			if (block_hdr->bcode_flag.bFlag_fill) {
-				tx = dmaengine_prep_dma_memset(chan,
-							       block_hdr->target_addr,
-							       block_hdr->argument,
-							       block_hdr->byte_count, 0);
-			} else {
-				tx = dmaengine_prep_dma_memcpy(chan,
-							       block_hdr->target_addr,
-							       phybuf + sizeof(struct ldr_hdr),
-							       block_hdr->byte_count, 0);
-
-//				if (rproc_data->verify) {
 //					@todo implement verification
 //					pCompareBuffer = virbuf + sizeof(struct ldr_hdr);
 //					pVerifyBuffer = virbuf + rproc_data->fw_size;
@@ -327,36 +293,103 @@ static void ldr_load(struct adi_rproc_data *rproc_data)
 //						}
 //					}
 //				}
-			}
 
-			if (!tx) {
-				dev_err(rproc_data->dev, "Failed to allocate dma transaction\n");
-				return;
-			}
+	return 0;
+}
 
-			if (is_final(block_hdr) || (is_final(next_hdr) && is_empty(next_hdr))) {
-				tx->callback = load_callback;
-				tx->callback_param = &cmp;
-			}
-			dmaengine_submit(tx);
-			dma_async_issue_pending(chan);
-		}
+/* @todo this needs to return status */
+/* @todo the error paths here leak tremendously, this needs further cleanup */
+static int ldr_load(struct adi_rproc_data *rproc_data)
+{
+	struct ldr_hdr *block_hdr = NULL;
+	struct ldr_hdr *next_hdr = NULL;
+	uint8_t *virbuf = (uint8_t *) rproc_data->mem_virt;
+	dma_addr_t phybuf = rproc_data->mem_handle;
+	int offset;
+	uint32_t byte_cnt_offset;
+	struct dma_chan *chan = dma_find_channel(DMA_MEMCPY);
+	struct dma_async_tx_descriptor *tx;
+	int final_hdr_empty;
+	struct completion cmp;
 
-		if (is_final(block_hdr)) {
-			wait_for_completion(&cmp);
-			break;
-		}
+	if (!chan) {
+		dev_err(rproc_data->dev, "Could not find dma memcpy channel\n");
+		return -ENODEV;
+	}
 
+	init_completion(&cmp);
+
+
+	/* ldr data is organised as blocks, verify the current block
+	 * and estimate the next block to be read based on the
+	 * information obtained regarding the current one */
+	offset = 0;
+	while (1) {
+		int blkhdr_dma_init_val;
+		dma_addr_t blkhdr_dma_src;
+
+		/* read the header */
 		virbuf += offset;
 		phybuf += offset;
-	} while (1);
+		block_hdr = (struct ldr_hdr *) virbuf;
+		if (block_hdr->bcode_flag.bFlag_fill)
+			byte_cnt_offset = 0;
+		else
+			byte_cnt_offset = block_hdr->byte_count;
 
-//	if (rproc_data->verify) {
-//		if (verfied == 0)
-//			dev_err(rproc_data->dev, "success to verify all the data\n");
-//		else
-//			dev_err(rproc_data->dev, "fail to verify all the data %d\n", verfied);
-//	}
+		offset = sizeof(struct ldr_hdr) + byte_cnt_offset;
+		next_hdr = (struct ldr_hdr *) (virbuf + offset);
+		tx = NULL;
+		/* Overwrite the ldr_load_addr */
+		if (block_hdr->bcode_flag.bFlag_first)
+			rproc_data->ldr_load_addr =
+				(unsigned long) block_hdr->target_addr;
+
+		/* Skip empty blocks if they are not final */
+		if (is_empty(block_hdr)) {
+			if (!is_final(block_hdr))
+				continue;
+
+			wait_for_completion(&cmp);
+			return 0;
+		}
+
+		if (block_hdr->bcode_flag.bFlag_fill) {
+			blkhdr_dma_init_val = block_hdr->argument;
+			tx = dmaengine_prep_dma_memset(chan,
+					       block_hdr->target_addr,
+					       blkhdr_dma_init_val,
+					       block_hdr->byte_count, 0);
+		} else {
+			blkhdr_dma_src = phybuf + sizeof(struct ldr_hdr);
+			tx = dmaengine_prep_dma_memcpy(chan,
+					       block_hdr->target_addr,
+					       blkhdr_dma_src,
+					       block_hdr->byte_count, 0);
+		}
+
+		if (!tx) {
+			dev_err(rproc_data->dev,
+					"Failed to allocate dma transaction\n");
+			return -ENOMEM;
+		}
+
+		/* Prepare in advance for an empty final block */
+		final_hdr_empty = !!(is_final_and_empty(next_hdr));
+		if (is_final(block_hdr) || final_hdr_empty) {
+			tx->callback = load_callback;
+			tx->callback_param = &cmp;
+		}
+
+		dmaengine_submit(tx);
+		dma_async_issue_pending(chan);
+		if (is_final(block_hdr)) {
+			wait_for_completion(&cmp);
+			return 0;
+		}
+
+	}
+
 }
 
 static int adi_valid_firmware(struct rproc *rproc, const struct firmware *fw)
